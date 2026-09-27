@@ -1,5 +1,14 @@
 #include "expressions.h"
 
+void Expression::add_inner_addresses(Expression* inner) {
+	set<Expression*>& addrss = inner->inner_addresses;
+	set<Expression*>::iterator itr = addrss.begin();
+	for (itr; itr != addrss.end(); itr++) {
+		(this->inner_addresses).insert(*itr);
+	}
+	(this->inner_addresses).insert(inner);
+}
+
 double Add::derive(Expression* var_of_deriving) { // (f+g)'(x) = f'(x) + g'(x)
 	if (var_of_deriving == this) return 1;
 	double l_derivative = l_exp->derive(var_of_deriving);

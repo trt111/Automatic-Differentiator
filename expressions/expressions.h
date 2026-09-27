@@ -10,32 +10,29 @@ using namespace std;
 
 class Expression
 {
-protected:
+private:
 	string type;
 	set<Expression*> Ch;
 	set<Expression*> inner_addresses;
 
-	void add_inner_addresses(Expression* inner) {
-		set<Expression*>& addrss = inner->get_inner_addresses();
-		set<Expression*>::iterator itr = addrss.begin();
-		for (itr; itr != addrss.end(); itr++) {
-			(this->inner_addresses).insert(*itr);
-		}
-		(this->inner_addresses).insert(inner);
-	}
-	void empty_addresses_set() {
-		(this->inner_addresses).clear();
-	}
-	void empty_children_set() {
-		(this->Ch).clear();
-	}
+protected:
+	void add_inner_addresses(Expression* inner);
+	void empty_addresses_set() { (this->inner_addresses).clear(); }
+	void empty_children_set() { (this->Ch).clear(); }
+
 public:
 	Expression(string type) { this->type = type; }
 	virtual double derive(Expression* var_of_deriving) = 0;
 	virtual double evaluate() = 0;
 	void add_child(Expression* child) { Ch.insert(child); }
 	string get_type() { return type; }
-	set<Expression*>& get_inner_addresses() { return inner_addresses; }
+
+	Expression& operator + (Expression* other) { return *(new Add(this, other)); }
+	Expression& operator - (Expression* other) { return *(new Subtract(this, other)); }
+	Expression& operator * (Expression* other) { return *(new Multiply(this, other)); }
+	Expression& operator / (Expression* other) { return *(new Divide(this, other)); }
+	Expression& operator ^ (unsigned int power) { return *(new Polynomial(this, power)); }
+
 	virtual ~Expression() {
 		set<Expression*>::iterator itr = (this->inner_addresses).begin();
 		for (itr; itr != (this->inner_addresses).end(); itr++) {
@@ -52,11 +49,13 @@ class Number : public Expression
 {
 private:
 	double value;
+
 public:
 	Number(double value) : Expression("number") { this->value = value; }
 	double derive(Expression* var_of_deriving) { return 0; }
 	double evaluate() { return value; }
 	operator int() { return (int)value; }
+	operator unsigned int() { if (value < 0) throw "Negative number cannot convert to a positive one"; return (int)value; }
 	operator double() { return value; }
 	virtual ~Number() = default;
 };
@@ -65,10 +64,14 @@ class Variable : public Expression
 {
 private:
 	double value;
+
 public:
 	Variable(double value) : Expression("variable") { this->value = value; }
 	double derive(Expression* var_of_deriving) { return var_of_deriving == this; }
 	double evaluate() { return value; }
+	double get_value() const { return value; }
+	void operator = (double new_val) { (this->value) = new_val; }
+	void operator = (const Variable& var) { (this->value) = var.get_value(); }
 	virtual ~Variable() = default;
 
 };
@@ -147,8 +150,10 @@ public:
 
 class Polynomial : public Expression
 {
+private:
 	Expression* base;
 	unsigned int power;
+
 public:
 	Polynomial(Expression* base, unsigned int power) : Expression("polynomial"), base(base), power(power) { 
 		if (this->base->get_type() != "number") this->base->add_child(this);
@@ -161,7 +166,9 @@ public:
 
 class Function: public Expression
 {
+private:
 	Expression* func;
+
 public:
 	Function(Expression* f) : Expression("function"), func(f) {
 		add_inner_addresses(func);
