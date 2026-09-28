@@ -9,6 +9,12 @@ void Expression::add_inner_addresses(Expression* inner) {
 	(this->inner_addresses).insert(inner);
 }
 
+Expression& Expression::operator + (Expression* other) { return (*(new Add(this, other))); }
+Expression& Expression::operator - (Expression* other) { return (*(new Subtract(this, other))); }
+Expression& Expression::operator * (Expression* other) { return (*(new Multiply(this, other))); }
+Expression& Expression::operator / (Expression* other) { return (*(new Divide(this, other))); }
+Expression& Expression::operator ^ (unsigned int power) { return (*(new Polynomial(this, power))); }
+
 double Add::derive(Expression* var_of_deriving) { // (f+g)'(x) = f'(x) + g'(x)
 	if (var_of_deriving == this) return 1;
 	double l_derivative = l_exp->derive(var_of_deriving);
@@ -37,8 +43,10 @@ double Multiply::derive(Expression* var_of_deriving) { // (f*g)'(x) = f'(x)g(x) 
 	if (var_of_deriving == this) return 1;
 	double l_derivative = l_exp->derive(var_of_deriving);
 	double r_derivative = r_exp->derive(var_of_deriving);
-	double l_evaluate = l_exp->evaluate();
-	double r_evaluate = r_exp->evaluate();
+	double l_evaluate = 0;
+	double r_evaluate = 0;
+	if (l_derivative != 0) r_evaluate = r_exp->derive(var_of_deriving);
+	if (r_derivative != 0) l_evaluate = l_exp->derive(var_of_deriving);
 	return l_derivative * r_evaluate + r_derivative * l_evaluate;
 }
 double Multiply::evaluate() { // (f*g)(x) = f(x)*g(x)
@@ -51,15 +59,17 @@ double Divide::derive(Expression* var_of_deriving) { // (f/g)'(x) = (f'(x)g(x) -
 	if (var_of_deriving == this && r_exp->evaluate()) return 1;
 	double l_derivative = l_exp->derive(var_of_deriving);
 	double r_derivative = r_exp->derive(var_of_deriving);
-	double l_evaluate = l_exp->evaluate();
-	double r_evaluate = r_exp->evaluate();
+	double l_evaluate = 0;
+	double r_evaluate = 0;
+	if (l_derivative != 0) r_evaluate = r_exp->derive(var_of_deriving);
 	if (r_evaluate == 0) throw "division by zero";
+	if (r_derivative != 0) l_evaluate = l_exp->derive(var_of_deriving);
 	return (l_derivative * r_evaluate - r_derivative * l_evaluate) / (r_evaluate * r_evaluate);
 }
 double Divide::evaluate() { // (f/g)(x) = f(x)/g(x)
-	double l_evaluate = l_exp->evaluate();
 	double r_evaluate = r_exp->evaluate();
 	if (r_evaluate == 0) throw "division by zero";
+	double l_evaluate = l_exp->evaluate();
 	return l_evaluate / r_evaluate;
 }
 

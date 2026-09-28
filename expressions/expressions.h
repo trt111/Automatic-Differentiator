@@ -27,12 +27,19 @@ public:
 	void add_child(Expression* child) { Ch.insert(child); }
 	string get_type() { return type; }
 
-	Expression& operator + (Expression* other) { return *(new Add(this, other)); }
-	Expression& operator - (Expression* other) { return *(new Subtract(this, other)); }
-	Expression& operator * (Expression* other) { return *(new Multiply(this, other)); }
-	Expression& operator / (Expression* other) { return *(new Divide(this, other)); }
-	Expression& operator ^ (unsigned int power) { return *(new Polynomial(this, power)); }
-
+	Expression& operator + (Expression* other);
+	Expression& operator - (Expression* other);
+	Expression& operator * (Expression* other);
+	Expression& operator / (Expression* other);
+	friend Expression& operator + (Expression* other, Expression& this_exp) { return this_exp + other; }
+	friend Expression& operator - (Expression* other, Expression& this_exp) { return (*other) - (&this_exp); }
+	friend Expression& operator * (Expression* other, Expression& this_exp) { return this_exp * other; }
+	friend Expression& operator / (Expression* other, Expression& this_exp) { return (*other) / (&this_exp); }
+	Expression& operator + (Expression& other) { return (*this) + (&other); }
+	Expression& operator - (Expression& other) { return (*this) - (&other); }
+	Expression& operator * (Expression& other) { return (*this) * (&other); }
+	Expression& operator / (Expression& other) { return (*this) / (&other); }
+	Expression& operator ^ (unsigned int power);
 	virtual ~Expression() {
 		set<Expression*>::iterator itr = (this->inner_addresses).begin();
 		for (itr; itr != (this->inner_addresses).end(); itr++) {
@@ -43,6 +50,24 @@ public:
 			}
 		}
 	}
+};
+
+class BinaryExpression : public Expression
+{
+protected:
+	Expression* l_exp;
+	Expression* r_exp;
+
+public:
+	BinaryExpression(Expression* left, Expression* right, string type) : Expression(type), l_exp(left), r_exp(right) {
+		if (l_exp->get_type() != "number") l_exp->add_child(this);
+		if (r_exp->get_type() != "number") r_exp->add_child(this);
+		add_inner_addresses(l_exp);
+		add_inner_addresses(r_exp);
+	}
+	double derive(Expression* var_of_deriving) = 0;
+	double evaluate() = 0;
+	virtual ~BinaryExpression() = default;
 };
 
 class Number : public Expression
@@ -76,73 +101,45 @@ public:
 
 };
 
-class Add : public Expression
+class Add : public BinaryExpression
 {
-private:
-	Expression* l_exp;
-	Expression* r_exp;
 
 public:
-	Add(Expression* left, Expression* right) : Expression("addition"), l_exp(left), r_exp(right) {
-		if (l_exp->get_type() != "number") l_exp->add_child(this);
-		if (r_exp->get_type() != "number") r_exp->add_child(this);
-		add_inner_addresses(l_exp);
-		add_inner_addresses(r_exp);
-	}
+	Add(Expression* left, Expression* right) : BinaryExpression(left,right,"addition") {}
+	Add(Expression& left, Expression& right): Add(&left, &right) {}
 	double derive(Expression* var_of_deriving);
 	double evaluate();
 	virtual ~Add() = default;
 };
 
-class Subtract : public Expression
+class Subtract : public BinaryExpression
 {
-private:
-	Expression* l_exp;
-	Expression* r_exp;
 
 public:
-	Subtract(Expression* left, Expression* right) : Expression("subtraction"), l_exp(left), r_exp(right) { 
-		if (l_exp->get_type() != "number") l_exp->add_child(this);
-		if (r_exp->get_type() != "number") r_exp->add_child(this);
-		add_inner_addresses(l_exp);
-		add_inner_addresses(r_exp);
-	}
+	Subtract(Expression* left, Expression* right) : BinaryExpression(left, right, "subtraction") {}
+	Subtract(Expression& left, Expression& right) : Subtract(&left, &right) {}
 	double derive(Expression* var_of_deriving);
 	double evaluate();
 	virtual ~Subtract() = default;
 };
 
-class Multiply : public Expression
+class Multiply : public BinaryExpression
 {
-private:
-	Expression* l_exp;
-	Expression* r_exp;
 
 public:
-	Multiply(Expression* left, Expression* right) : Expression("multiplication"), l_exp(left), r_exp(right) { 
-		if (l_exp->get_type() != "number") l_exp->add_child(this);
-		if (r_exp->get_type() != "number") r_exp->add_child(this);
-		add_inner_addresses(l_exp);
-		add_inner_addresses(r_exp);
-	}
+	Multiply(Expression* left, Expression* right) : BinaryExpression(left,right,"Multiplication") {}
+	Multiply(Expression& left, Expression& right): Multiply(&left, &right) {}
 	double derive(Expression* var_of_deriving);
 	double evaluate();
 	virtual ~Multiply() = default;
 };
 
-class Divide : public Expression
+class Divide : public BinaryExpression
 {
-private:
-	Expression* l_exp;
-	Expression* r_exp;
 
 public:
-	Divide(Expression* left, Expression* right) : Expression("division"), l_exp(left), r_exp(right) { 
-		if (l_exp->get_type() != "number") l_exp->add_child(this);
-		if (r_exp->get_type() != "number") r_exp->add_child(this);
-		add_inner_addresses(l_exp);
-		add_inner_addresses(r_exp);
-	}
+	Divide(Expression* left, Expression* right) : BinaryExpression(left, right, "division") {}
+	Divide(Expression& left, Expression& right) : Divide(&left, &right) {}
 	double derive(Expression* var_of_deriving);
 	double evaluate();
 	virtual ~Divide() = default;
@@ -159,6 +156,7 @@ public:
 		if (this->base->get_type() != "number") this->base->add_child(this);
 		add_inner_addresses(base);
 	}
+	Polynomial(Expression& base, unsigned int power): Polynomial(&base, power) {}
 	double derive(Expression* var_of_deriving);
 	double evaluate();
 	virtual ~Polynomial() = default;
@@ -173,6 +171,7 @@ public:
 	Function(Expression* f) : Expression("function"), func(f) {
 		add_inner_addresses(func);
 	}
+	Function(Expression& f): Function(&f) {}
 	double derive(Expression* var_of_deriving) { 
 		if (var_of_deriving == this) return 1;
 		return func->derive(var_of_deriving); 
