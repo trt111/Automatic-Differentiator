@@ -5,8 +5,11 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <map>
 
 using namespace std;
+
+class Variable;
 
 class Expression
 {
@@ -22,7 +25,9 @@ protected:
 
 public:
 	Expression(string type) { this->type = type; }
-	virtual double derive(Expression* var_of_deriving) = 0;
+	virtual double derive(Variable* var_of_deriving) = 0;
+	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
+	double p_derive(Expression* var_of_deriving, map<Expression*, double>& derivatives_cache, map<Expression*, double>& evaluations_cache);
 	virtual double evaluate() = 0;
 	void add_child(Expression* child) { Ch.insert(child); }
 	string get_type() { return type; }
@@ -40,6 +45,7 @@ public:
 	Expression& operator * (Expression& other) { return (*this) * (&other); }
 	Expression& operator / (Expression& other) { return (*this) / (&other); }
 	Expression& operator ^ (unsigned int power);
+
 	virtual ~Expression() {
 		set<Expression*>::iterator itr = (this->inner_addresses).begin();
 		for (itr; itr != (this->inner_addresses).end(); itr++) {
@@ -65,7 +71,8 @@ public:
 		add_inner_addresses(l_exp);
 		add_inner_addresses(r_exp);
 	}
-	double derive(Expression* var_of_deriving) = 0;
+	virtual double derive(Variable* var_of_deriving) = 0;
+	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
 	double evaluate() = 0;
 	virtual ~BinaryExpression() = default;
 };
@@ -77,7 +84,8 @@ private:
 
 public:
 	Number(double value) : Expression("number") { this->value = value; }
-	double derive(Expression* var_of_deriving) { return 0; }
+	double derive(Variable* var_of_deriving) { return 0; }
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return 0; }
 	double evaluate() { return value; }
 	operator int() { return (int)value; }
 	operator unsigned int() { if (value < 0) throw "Negative number cannot convert to a positive one"; return (int)value; }
@@ -92,7 +100,8 @@ private:
 
 public:
 	Variable(double value) : Expression("variable") { this->value = value; }
-	double derive(Expression* var_of_deriving) { return var_of_deriving == this; }
+	double derive(Variable* var_of_deriving) { return var_of_deriving == this; }
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache){ return var_of_deriving == this; }
 	double evaluate() { return value; }
 	double get_value() const { return value; }
 	void operator = (double new_val) { (this->value) = new_val; }
@@ -107,7 +116,8 @@ class Add : public BinaryExpression
 public:
 	Add(Expression* left, Expression* right) : BinaryExpression(left,right,"addition") {}
 	Add(Expression& left, Expression& right): Add(&left, &right) {}
-	double derive(Expression* var_of_deriving);
+	double derive(Variable* var_of_deriving);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate();
 	virtual ~Add() = default;
 };
@@ -118,7 +128,8 @@ class Subtract : public BinaryExpression
 public:
 	Subtract(Expression* left, Expression* right) : BinaryExpression(left, right, "subtraction") {}
 	Subtract(Expression& left, Expression& right) : Subtract(&left, &right) {}
-	double derive(Expression* var_of_deriving);
+	double derive(Variable* var_of_deriving);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate();
 	virtual ~Subtract() = default;
 };
@@ -129,7 +140,8 @@ class Multiply : public BinaryExpression
 public:
 	Multiply(Expression* left, Expression* right) : BinaryExpression(left,right,"Multiplication") {}
 	Multiply(Expression& left, Expression& right): Multiply(&left, &right) {}
-	double derive(Expression* var_of_deriving);
+	double derive(Variable* var_of_deriving);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate();
 	virtual ~Multiply() = default;
 };
@@ -140,7 +152,8 @@ class Divide : public BinaryExpression
 public:
 	Divide(Expression* left, Expression* right) : BinaryExpression(left, right, "division") {}
 	Divide(Expression& left, Expression& right) : Divide(&left, &right) {}
-	double derive(Expression* var_of_deriving);
+	double derive(Variable* var_of_deriving);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate();
 	virtual ~Divide() = default;
 };
@@ -157,7 +170,8 @@ public:
 		add_inner_addresses(base);
 	}
 	Polynomial(Expression& base, unsigned int power): Polynomial(&base, power) {}
-	double derive(Expression* var_of_deriving);
+	double derive(Variable* var_of_deriving);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate();
 	virtual ~Polynomial() = default;
 };
@@ -172,12 +186,12 @@ public:
 		add_inner_addresses(func);
 	}
 	Function(Expression& f): Function(&f) {}
-	double derive(Expression* var_of_deriving) { 
-		if (var_of_deriving == this) return 1;
-		return func->derive(var_of_deriving); 
-	}
+	double derive(Variable* var_of_deriving) { return func->derive(var_of_deriving); }
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return var_of_deriving == this || var_of_deriving == func; }
 	double evaluate() { return func->evaluate(); }
 	virtual ~Function() = default;
 };
+
+double d(Expression* f, Expression* x);
 
 #endif 
