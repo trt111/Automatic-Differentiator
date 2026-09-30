@@ -3,6 +3,7 @@
 
 
 #include <iostream>
+#include <cmath>
 #include <string>
 #include <set>
 #include <map>
@@ -11,7 +12,13 @@ using namespace std;
 
 class Variable;
 
-class Expression
+class Math {
+public:
+	static constexpr double PI = 3.141592653589793;
+	static constexpr double E = 2.718281828459045;
+};
+
+class Expression: public Math
 {
 private:
 	string type;
@@ -26,9 +33,9 @@ protected:
 public:
 	Expression(string type) { this->type = type; }
 	virtual double derive(Variable* var_of_deriving) = 0;
-	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
 	double p_derive(Expression* var_of_deriving, map<Expression*, double>& derivatives_cache, map<Expression*, double>& evaluations_cache);
 	virtual double evaluate(map<Expression*, double>& evaluations_cache) = 0;
+	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
 	double evaluate() {
 		map<Expression*, double>m;
 		return this->evaluate(m);
@@ -76,8 +83,8 @@ public:
 		add_inner_addresses(r_exp);
 	}
 	virtual double derive(Variable* var_of_deriving) = 0;
+	virtual double evaluate(map<Expression*, double>& evaluations_cache) = 0;
 	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
-	double evaluate(map<Expression*, double>& evaluations_cache) = 0;
 	virtual ~BinaryExpression() = default;
 };					
 					
@@ -89,8 +96,8 @@ private:
 public:				
 	Number(double value) : Expression("number") { this->value = value; }
 	double derive(Variable* var_of_deriving) { return 0; }
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return 0; }
 	double evaluate(map<Expression*, double>& evaluations_cache) { evaluations_cache[this] = value; return value; }
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return 0; }
 	operator int() { return (int)value; }
 	operator unsigned int() { if (value < 0) throw "Negative number cannot convert to a positive one"; return (int)value; }
 	operator double() { return value; }
@@ -105,8 +112,8 @@ private:
 public:
 	Variable(double value) : Expression("variable") { this->value = value; }
 	double derive(Variable* var_of_deriving) { return var_of_deriving == this; }
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache){ return var_of_deriving == this; }
 	double evaluate(map<Expression*, double>& evaluations_cache) { evaluations_cache[this] = value; return value; }
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return var_of_deriving == this; }
 	double get_value() const { return value; }
 	void operator = (double new_val) { (this->value) = new_val; }
 	void operator = (const Variable& var) { (this->value) = var.get_value(); }
@@ -121,8 +128,8 @@ public:
 	Add(Expression* left, Expression* right) : BinaryExpression(left,right,"addition") {}
 	Add(Expression& left, Expression& right): Add(&left, &right) {}
 	double derive(Variable* var_of_deriving);
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	virtual ~Add() = default;
 };
 
@@ -133,8 +140,8 @@ public:
 	Subtract(Expression* left, Expression* right) : BinaryExpression(left, right, "subtraction") {}
 	Subtract(Expression& left, Expression& right) : Subtract(&left, &right) {}
 	double derive(Variable* var_of_deriving);
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	virtual ~Subtract() = default;
 };
 
@@ -145,8 +152,8 @@ public:
 	Multiply(Expression* left, Expression* right) : BinaryExpression(left,right,"Multiplication") {}
 	Multiply(Expression& left, Expression& right): Multiply(&left, &right) {}
 	double derive(Variable* var_of_deriving);
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	virtual ~Multiply() = default;
 };
 
@@ -157,8 +164,8 @@ public:
 	Divide(Expression* left, Expression* right) : BinaryExpression(left, right, "division") {}
 	Divide(Expression& left, Expression& right) : Divide(&left, &right) {}
 	double derive(Variable* var_of_deriving);
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	virtual ~Divide() = default;
 };
 
@@ -175,10 +182,124 @@ public:
 	}
 	Polynomial(Expression& base, unsigned int power): Polynomial(&base, power) {}
 	double derive(Variable* var_of_deriving);
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	virtual ~Polynomial() = default;
 };
+
+class SquareRoot : public Expression
+{
+private:
+	Expression* base;
+
+public:
+	SquareRoot(Expression* base) : Expression("square-root"), base(base) {
+		if (this->base->get_type() != "number") this->base->add_child(this);
+		add_inner_addresses(base);
+	}
+	SquareRoot(Expression& base, unsigned int power) : SquareRoot(&base) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~SquareRoot() = default;
+};
+
+class Exp : public Expression
+{
+private:
+	Expression* inner;
+	double conversion_base;
+public:
+	Exp(Expression* inner, double base = E) : Expression("exponent"), inner(inner) {
+		add_inner_addresses(inner);
+		if (inner->get_type() != "number") inner->add_child(this);
+		if (base == E) conversion_base = 1;
+		else {
+			conversion_base = log(base);
+		}
+	}
+	Exp(Expression& inner, double base = E) : Exp(&inner, base) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~Exp() = default;
+};
+
+class Log : public Expression
+{
+private:
+	Expression* inner;
+	double conversion_base;
+
+public:
+	Log(Expression* inner, double base = E) : Expression("logarithm"), inner(inner) {
+		add_inner_addresses(inner);
+		if (inner->get_type() != "number") inner->add_child(this);
+		if (base == E) conversion_base = 1;
+		else {
+			conversion_base = 1/log(base);
+		}
+	}
+	Log(Expression& inner, double base = E) : Log(&inner, base) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~Log() = default;
+};
+
+class Trigonometric : public Expression
+{
+protected:
+	Expression* inner;
+public:
+	Trigonometric(Expression* inner, string type) : Expression(type), inner(inner) {
+		add_inner_addresses(inner);
+		if (inner->get_type() != "number") inner->add_child(this);
+	}
+	Trigonometric(Expression& inner, string type) : Trigonometric(&inner, type) {}
+	double derive(Variable* var_of_deriving) = 0;
+	double evaluate(map<Expression*, double>& evaluations_cache) = 0;
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
+	virtual ~Trigonometric() = default;
+};
+
+class Sine : public Trigonometric
+{
+
+public:
+	Sine(Expression* inner) : Trigonometric(inner, "sine") {}
+	Sine(Expression& inner) : Sine(&inner) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~Sine() = default;
+};
+
+class Cosine : public Trigonometric
+{
+
+public:
+	Cosine(Expression* inner) : Trigonometric(inner, "cosine") {}
+	Cosine(Expression& inner) : Cosine(&inner) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~Cosine() = default;
+};
+
+class Tangent : public Trigonometric
+{
+
+public:
+	Tangent(Expression* inner) : Trigonometric(inner,"tangent") {}
+	Tangent(Expression& inner) : Tangent(&inner) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~Tangent() = default;
+};
+
+
 
 class Function: public Expression
 {
@@ -188,11 +309,12 @@ private:
 public:
 	Function(Expression* f) : Expression("function"), func(f) {
 		add_inner_addresses(func);
+		func->add_child(this);
 	}
 	Function(Expression& f): Function(&f) {}
 	double derive(Variable* var_of_deriving) { return func->derive(var_of_deriving); }
-	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return var_of_deriving == this || var_of_deriving == func; }
 	double evaluate(map<Expression*, double>& evaluations_cache) { return func->evaluate(evaluations_cache); }
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return var_of_deriving == this || var_of_deriving == func; }
 	virtual ~Function() = default;
 };
 
