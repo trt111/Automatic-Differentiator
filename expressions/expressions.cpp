@@ -37,10 +37,14 @@ double Add::derive(Variable* var_of_deriving) { // (f+g)'(x) = f'(x) + g'(x)
 	double r_derivative = r_exp->derive(var_of_deriving);
 	return l_derivative + r_derivative;
 }
-double Add::evaluate() { // (f+g)(x) = f(x) + g(x)
-	double l_evaluate = l_exp->evaluate();
-	double r_evaluate = r_exp->evaluate();
-	return l_evaluate + r_evaluate;
+double Add::evaluate(map<Expression*, double>& evaluations_cache) { // (f+g)(x) = f(x) + g(x)
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		l_exp->evaluate(evaluations_cache);
+		r_exp->evaluate(evaluations_cache);
+		evaluations_cache[this] = evaluations_cache[l_exp] + evaluations_cache[r_exp];
+	}
+	return evaluations_cache[this];
 }
 double Add::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
 	if (var_of_deriving == this) return 1;
@@ -55,10 +59,14 @@ double Subtract::derive(Variable* var_of_deriving) { // (f-g)'(x) = f'(x) - g'(x
 	double r_derivative = r_exp->derive(var_of_deriving);
 	return l_derivative - r_derivative;
 }
-double Subtract::evaluate() { // (f-g)(x) = f(x)-g(x)
-	double l_evaluate = l_exp->evaluate();
-	double r_evaluate = r_exp->evaluate();
-	return l_evaluate - r_evaluate;
+double Subtract::evaluate(map<Expression*, double>& evaluations_cache) { // (f-g)(x) = f(x)-g(x)
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		l_exp->evaluate(evaluations_cache);
+		r_exp->evaluate(evaluations_cache);
+		evaluations_cache[this] = evaluations_cache[l_exp] - evaluations_cache[r_exp];
+	}
+	return evaluations_cache[this];
 }
 double Subtract::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
 	if (var_of_deriving == this) return 1;
@@ -77,10 +85,14 @@ double Multiply::derive(Variable* var_of_deriving) { // (f*g)'(x) = f'(x)g(x) + 
 	if (r_derivative != 0) l_evaluate = l_exp->evaluate();
 	return l_derivative * r_evaluate + r_derivative * l_evaluate;
 }
-double Multiply::evaluate() { // (f*g)(x) = f(x)*g(x)
-	double l_evaluate = l_exp->evaluate();
-	double r_evaluate = r_exp->evaluate();
-	return l_evaluate * r_evaluate;
+double Multiply::evaluate(map<Expression*, double>& evaluations_cache) { // (f*g)(x) = f(x)*g(x)
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		l_exp->evaluate(evaluations_cache);
+		r_exp->evaluate(evaluations_cache);
+		evaluations_cache[this] = evaluations_cache[l_exp] * evaluations_cache[r_exp];
+	}
+	return evaluations_cache[this];
 }
 double Multiply::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
 	double total = 0;
@@ -107,11 +119,15 @@ double Divide::derive(Variable* var_of_deriving) { // (f/g)'(x) = (f'(x)g(x) - g
 	if (r_derivative != 0) l_evaluate = l_exp->evaluate();
 	return (l_derivative * r_evaluate - r_derivative * l_evaluate) / (r_evaluate * r_evaluate);
 }
-double Divide::evaluate() { // (f/g)(x) = f(x)/g(x)
-	double r_evaluate = r_exp->evaluate();
-	if (r_evaluate == 0) throw "division by zero";
-	double l_evaluate = l_exp->evaluate();
-	return l_evaluate / r_evaluate;
+double Divide::evaluate(map<Expression*, double>& evaluations_cache) { // (f/g)(x) = f(x)/g(x)
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		l_exp->evaluate(evaluations_cache);
+		r_exp->evaluate(evaluations_cache);
+		if (evaluations_cache[r_exp] == 0) throw "division by zero";
+		evaluations_cache[this] = evaluations_cache[l_exp] / evaluations_cache[r_exp];
+	}
+	return evaluations_cache[this];
 }
 double Divide::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
 	if (var_of_deriving == this) return 1;
@@ -141,14 +157,20 @@ double Polynomial::derive(Variable* var_of_deriving) { // (f^n)'(x) = n*f'(x)*(f
 
 	return total;
 }
-double Polynomial::evaluate() { // (f^n)(x) = (f(x))^n
-	double base_evaluate = base->evaluate();
-	if (base_evaluate == 0) return 0;
+double Polynomial::evaluate(map<Expression*, double>& evaluations_cache) { // (f^n)(x) = (f(x))^n
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) != end) return evaluations_cache[this];
+	double base_evaluate = base->evaluate(evaluations_cache);
+	if (base_evaluate == 0) {
+		evaluations_cache[this] = 0;
+		return 0;
+	}
 	double total = 1;
 	for (int i = 0; i < (this->power); i++) {
 		total *= base_evaluate;
 	}
-	return total;
+	evaluations_cache[this] = total;
+	return evaluations_cache[this];
 }
 double Polynomial::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
 	if (var_of_deriving == this) return 1;

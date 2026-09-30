@@ -28,7 +28,11 @@ public:
 	virtual double derive(Variable* var_of_deriving) = 0;
 	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
 	double p_derive(Expression* var_of_deriving, map<Expression*, double>& derivatives_cache, map<Expression*, double>& evaluations_cache);
-	virtual double evaluate() = 0;
+	virtual double evaluate(map<Expression*, double>& evaluations_cache) = 0;
+	double evaluate() {
+		map<Expression*, double>m;
+		return this->evaluate(m);
+	}
 	void add_child(Expression* child) { Ch.insert(child); }
 	string get_type() { return type; }
 
@@ -73,20 +77,20 @@ public:
 	}
 	virtual double derive(Variable* var_of_deriving) = 0;
 	virtual double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) = 0;
-	double evaluate() = 0;
+	double evaluate(map<Expression*, double>& evaluations_cache) = 0;
 	virtual ~BinaryExpression() = default;
-};
-
+};					
+					
 class Number : public Expression
-{
-private:
-	double value;
-
-public:
+{					
+private:			
+	double value;	
+					
+public:				
 	Number(double value) : Expression("number") { this->value = value; }
 	double derive(Variable* var_of_deriving) { return 0; }
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return 0; }
-	double evaluate() { return value; }
+	double evaluate(map<Expression*, double>& evaluations_cache) { evaluations_cache[this] = value; return value; }
 	operator int() { return (int)value; }
 	operator unsigned int() { if (value < 0) throw "Negative number cannot convert to a positive one"; return (int)value; }
 	operator double() { return value; }
@@ -102,7 +106,7 @@ public:
 	Variable(double value) : Expression("variable") { this->value = value; }
 	double derive(Variable* var_of_deriving) { return var_of_deriving == this; }
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache){ return var_of_deriving == this; }
-	double evaluate() { return value; }
+	double evaluate(map<Expression*, double>& evaluations_cache) { evaluations_cache[this] = value; return value; }
 	double get_value() const { return value; }
 	void operator = (double new_val) { (this->value) = new_val; }
 	void operator = (const Variable& var) { (this->value) = var.get_value(); }
@@ -118,7 +122,7 @@ public:
 	Add(Expression& left, Expression& right): Add(&left, &right) {}
 	double derive(Variable* var_of_deriving);
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
-	double evaluate();
+	double evaluate(map<Expression*, double>& evaluations_cache);
 	virtual ~Add() = default;
 };
 
@@ -130,7 +134,7 @@ public:
 	Subtract(Expression& left, Expression& right) : Subtract(&left, &right) {}
 	double derive(Variable* var_of_deriving);
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
-	double evaluate();
+	double evaluate(map<Expression*, double>& evaluations_cache);
 	virtual ~Subtract() = default;
 };
 
@@ -142,7 +146,7 @@ public:
 	Multiply(Expression& left, Expression& right): Multiply(&left, &right) {}
 	double derive(Variable* var_of_deriving);
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
-	double evaluate();
+	double evaluate(map<Expression*, double>& evaluations_cache);
 	virtual ~Multiply() = default;
 };
 
@@ -154,7 +158,7 @@ public:
 	Divide(Expression& left, Expression& right) : Divide(&left, &right) {}
 	double derive(Variable* var_of_deriving);
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
-	double evaluate();
+	double evaluate(map<Expression*, double>& evaluations_cache);
 	virtual ~Divide() = default;
 };
 
@@ -172,7 +176,7 @@ public:
 	Polynomial(Expression& base, unsigned int power): Polynomial(&base, power) {}
 	double derive(Variable* var_of_deriving);
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
-	double evaluate();
+	double evaluate(map<Expression*, double>& evaluations_cache);
 	virtual ~Polynomial() = default;
 };
 
@@ -188,7 +192,7 @@ public:
 	Function(Expression& f): Function(&f) {}
 	double derive(Variable* var_of_deriving) { return func->derive(var_of_deriving); }
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) { return var_of_deriving == this || var_of_deriving == func; }
-	double evaluate() { return func->evaluate(); }
+	double evaluate(map<Expression*, double>& evaluations_cache) { return func->evaluate(evaluations_cache); }
 	virtual ~Function() = default;
 };
 
