@@ -43,20 +43,6 @@ public:
 	void add_child(Expression* child) { Ch.insert(child); }
 	string get_type() { return type; }
 
-	Expression& operator + (Expression* other);
-	Expression& operator - (Expression* other);
-	Expression& operator * (Expression* other);
-	Expression& operator / (Expression* other);
-	friend Expression& operator + (Expression* other, Expression& this_exp) { return this_exp + other; }
-	friend Expression& operator - (Expression* other, Expression& this_exp) { return (*other) - (&this_exp); }
-	friend Expression& operator * (Expression* other, Expression& this_exp) { return this_exp * other; }
-	friend Expression& operator / (Expression* other, Expression& this_exp) { return (*other) / (&this_exp); }
-	Expression& operator + (Expression& other) { return (*this) + (&other); }
-	Expression& operator - (Expression& other) { return (*this) - (&other); }
-	Expression& operator * (Expression& other) { return (*this) * (&other); }
-	Expression& operator / (Expression& other) { return (*this) / (&other); }
-	Expression& operator ^ (unsigned int power);
-
 	virtual ~Expression() {
 		set<Expression*>::iterator itr = (this->inner_addresses).begin();
 		for (itr; itr != (this->inner_addresses).end(); itr++) {
@@ -214,6 +200,9 @@ public:
 		add_inner_addresses(inner);
 		if (inner->get_type() != "number") inner->add_child(this);
 		if (base == E) conversion_base = 1;
+		else if (base <= 0) {
+			throw "Exponent's base must be positive";
+		}
 		else {
 			conversion_base = log(base);
 		}
@@ -236,6 +225,9 @@ public:
 		add_inner_addresses(inner);
 		if (inner->get_type() != "number") inner->add_child(this);
 		if (base == E) conversion_base = 1;
+		else if (base <= 0 || base == 1) {
+			throw "Logarithm's base must be positive and different than 1";
+		}
 		else {
 			conversion_base = 1/log(base);
 		}
@@ -318,6 +310,6 @@ public:
 	virtual ~Function() = default;
 };
 
-double d(Expression* f, Expression* x);
+
 
 #endif 

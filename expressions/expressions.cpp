@@ -1,11 +1,5 @@
 #include "expressions.h"
 
-double d(Expression* f, Expression* x) {
-	map<Expression*, double> derivatives_cache;
-	map<Expression*, double> evaluations_cache;
-	return f->p_derive(x, derivatives_cache, evaluations_cache);
-}
-
 void Expression::add_inner_addresses(Expression* inner) {
 	set<Expression*>& addrss = inner->inner_addresses;
 	set<Expression*>::iterator itr = addrss.begin();
@@ -147,31 +141,6 @@ double Divide::surface_level_derive(Expression* var_of_deriving, map<Expression*
 	return 0;
 }
 
-double SquareRoot::derive(Variable* var_of_deriving) { // (f*g)'(x) = f'(x)g(x) + g'(x)f(x)
-	double base_derivative = base->derive(var_of_deriving);
-	double base_eval = base->evaluate();
-
-	return base_derivative / (2 * sqrt(base_eval));
-}
-double SquareRoot::evaluate(map<Expression*, double>& evaluations_cache) { // (f*g)(x) = f(x)*g(x)
-	map<Expression*, double>::iterator end = evaluations_cache.end();
-	if (evaluations_cache.find(this) == end) {
-		base->evaluate(evaluations_cache);
-		evaluations_cache[this] = sqrt(evaluations_cache[base]);
-	}
-	return evaluations_cache[this];
-}
-double SquareRoot::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
-	double total = 0;
-	if (var_of_deriving == this) return 1;
-	map<Expression*, double>::iterator end = evaluations_cache.end();
-	if (var_of_deriving == base) {
-		base->evaluate(evaluations_cache);
-		total = 1 / (2 * sqrt(evaluations_cache[base]));
-	}
-	return total;
-}
-
 double Polynomial::derive(Variable* var_of_deriving) { // (f^n)'(x) = n*f'(x)*(f(x))^(n-1)
 	double base_evaluate = base->evaluate();
 	if (base_evaluate == 0) return 0;
@@ -214,6 +183,30 @@ double Polynomial::surface_level_derive(Expression* var_of_deriving, map<Express
 	return 0;
 }
 
+double SquareRoot::derive(Variable* var_of_deriving) { // (f*g)'(x) = f'(x)g(x) + g'(x)f(x)
+	double base_derivative = base->derive(var_of_deriving);
+	double base_eval = base->evaluate();
+
+	return base_derivative / (2 * sqrt(base_eval));
+}
+double SquareRoot::evaluate(map<Expression*, double>& evaluations_cache) { // (f*g)(x) = f(x)*g(x)
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		base->evaluate(evaluations_cache);
+		evaluations_cache[this] = sqrt(evaluations_cache[base]);
+	}
+	return evaluations_cache[this];
+}
+double SquareRoot::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
+	double total = 0;
+	if (var_of_deriving == this) return 1;
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (var_of_deriving == base) {
+		base->evaluate(evaluations_cache);
+		total = 1 / (2 * sqrt(evaluations_cache[base]));
+	}
+	return total;
+}
 
 double Exp::derive(Variable* var_of_deriving) { // (a^f(x))' = a^x * ln(a) * f'(x)
 	double inner_derivative = inner->derive(var_of_deriving);
@@ -246,6 +239,7 @@ double Log::evaluate(map<Expression*, double>& evaluations_cache) {
 	map<Expression*, double>::iterator end = evaluations_cache.end();
 	if (evaluations_cache.find(this) == end) {
 		inner->evaluate(evaluations_cache);
+		if (evaluations_cache[inner] == 0) throw "Can't evaluate logarithm of a non-positive value";
 		evaluations_cache[this] = log(evaluations_cache[inner]) * conversion_base;
 	}
 	return evaluations_cache[this];
@@ -254,6 +248,7 @@ double Log::surface_level_derive(Expression* var_of_deriving, map<Expression*, d
 	if (var_of_deriving == this) return 1;
 	else if (var_of_deriving == this->inner) {
 		inner->evaluate(evaluations_cache);
+		if (evaluations_cache[inner] == 0) throw "Logarithms doesn't have a derivative at inner value 0";
 		return (1 / evaluations_cache[inner]) * conversion_base;
 	}
 	return 0;
@@ -326,9 +321,3 @@ double Tangent::surface_level_derive(Expression* var_of_deriving, map<Expression
 	}
 	return 0;
 }
-
-Expression& Expression::operator + (Expression* other) { return (*(new Add(this, other))); }
-Expression& Expression::operator - (Expression* other) { return (*(new Subtract(this, other))); }
-Expression& Expression::operator * (Expression* other) { return (*(new Multiply(this, other))); }
-Expression& Expression::operator / (Expression* other) { return (*(new Divide(this, other))); }
-Expression& Expression::operator ^ (unsigned int power) { return (*(new Polynomial(this, power))); }
