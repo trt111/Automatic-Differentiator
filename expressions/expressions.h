@@ -190,6 +190,23 @@ public:
 	virtual ~SquareRoot() = default;
 };
 
+class AbsoluteValue : public Expression
+{
+private:
+	Expression* base;
+
+public:
+	AbsoluteValue(Expression* base) : Expression("absolute-value"), base(base) {
+		if (this->base->get_type() != "number") this->base->add_child(this);
+		add_inner_addresses(base);
+	}
+	AbsoluteValue(Expression& base, unsigned int power) : AbsoluteValue(&base) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~AbsoluteValue() = default;
+};
+
 class Exp : public Expression
 {
 private:
@@ -289,6 +306,42 @@ public:
 	double evaluate(map<Expression*, double>& evaluations_cache);
 	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
 	virtual ~Tangent() = default;
+};
+
+class ArcSine : public Trigonometric
+{
+
+public:
+	ArcSine(Expression* inner) : Trigonometric(inner, "arcsine") {}
+	ArcSine(Expression& inner) : ArcSine(&inner) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~ArcSine() = default;
+};
+
+class ArcCosine : public Trigonometric
+{
+
+public:
+	ArcCosine(Expression* inner) : Trigonometric(inner, "arccosine") {}
+	ArcCosine(Expression& inner) : ArcCosine(&inner) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~ArcCosine() = default;
+};
+
+class ArcTangent : public Trigonometric
+{
+
+public:
+	ArcTangent(Expression* inner) : Trigonometric(inner, "arctangent") {}
+	ArcTangent(Expression& inner) : ArcTangent(&inner) {}
+	double derive(Variable* var_of_deriving);
+	double evaluate(map<Expression*, double>& evaluations_cache);
+	double surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache);
+	virtual ~ArcTangent() = default;
 };
 
 

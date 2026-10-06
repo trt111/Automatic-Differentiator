@@ -20,6 +20,11 @@ Expression& operator / (Expression* this_exp, Expression& other);
 
 Expression& operator ^ (Expression& this_exp, unsigned int power);
 
+Expression& sqrt(Expression& inner);
+Expression& sqrt(Expression* inner);
+
+Expression& abs(Expression& inner);
+Expression& abs(Expression* inner);
 
 Expression& operator ^ (double base, Expression& power);
 Expression& exp(Expression& inner, double base = Math().E);
@@ -40,6 +45,15 @@ Expression& cos(Expression* inner);
 
 Expression& tan(Expression& inner);
 Expression& tan(Expression* inner);
+
+Expression& arcsin(Expression& inner);
+Expression& arcsin(Expression* inner);
+
+Expression& arccos(Expression& inner);
+Expression& arccos(Expression* inner);
+
+Expression& arctan(Expression& inner);
+Expression& arctan(Expression* inner);
 
 double d(Expression* f, Expression* x);
 

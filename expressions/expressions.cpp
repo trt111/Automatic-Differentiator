@@ -208,6 +208,33 @@ double SquareRoot::surface_level_derive(Expression* var_of_deriving, map<Express
 	return total;
 }
 
+double AbsoluteValue::derive(Variable* var_of_deriving) { // (|f(x)|)' = { f'(x), when f(x) >= 0 | -f'(x), when f(x) < 0 }
+	double base_derivative = base->derive(var_of_deriving);
+	double base_eval = base->evaluate();
+	if (base_eval == 0) throw "Derivative of |x| doesn't exist at x = 0";
+	else if (base_eval > 0) return base_derivative;
+
+}
+double AbsoluteValue::evaluate(map<Expression*, double>& evaluations_cache) { // |f(x)| = { f(x), when f(x) >= 0 | -f(x), when f(x) < 0 }
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		base->evaluate(evaluations_cache);
+		evaluations_cache[this] = abs(evaluations_cache[base]);
+	}
+	return evaluations_cache[this];
+}
+double AbsoluteValue::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
+	if (var_of_deriving == this) return 1;
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (var_of_deriving == base) {
+		double base_eval = base->evaluate(evaluations_cache);
+		if (base_eval == 0) throw "Derivative of |x| doesn't exist at x = 0";
+		else if (base_eval > 0) return 1;
+		else return -1;
+	}
+	return 0;
+}
+
 double Exp::derive(Variable* var_of_deriving) { // (a^f(x))' = a^x * ln(a) * f'(x)
 	double inner_derivative = inner->derive(var_of_deriving);
 	double inner_eval = inner->evaluate();
@@ -298,7 +325,7 @@ double Cosine::surface_level_derive(Expression* var_of_deriving, map<Expression*
 	return 0;
 }
 
-double Tangent::derive(Variable* var_of_deriving) { // (a^f(x))' = a^x * ln(a) * f'(x)
+double Tangent::derive(Variable* var_of_deriving) { // (tan(f(x)))' = 1/cos^2(f(x)) * f'(x)
 	double inner_derivative = inner->derive(var_of_deriving);
 	double inner_eval = inner->evaluate();
 	double t = cos(inner_eval);
@@ -318,6 +345,78 @@ double Tangent::surface_level_derive(Expression* var_of_deriving, map<Expression
 		inner->evaluate(evaluations_cache);
 		double t = cos(evaluations_cache[inner]);
 		return 1 / (t * t);
+	}
+	return 0;
+}
+
+double ArcSine::derive(Variable* var_of_deriving) { // (arcsin(f(x)))' = f'(x) / sqrt(1 - f^2(x))
+	double inner_eval = inner->evaluate();
+	if (inner_eval >= 1 || inner_eval <= -1) throw "Inner value of arcsin derivative cannot be greater or equal to 1 or smaller or equal to -1";
+	double inner_derivative = inner->derive(var_of_deriving);
+	return inner_derivative / sqrt(1 - inner_eval * inner_eval);
+}
+double ArcSine::evaluate(map<Expression*, double>& evaluations_cache) {
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		double inner_eval = inner->evaluate(evaluations_cache);
+		if (inner_eval > 1 || inner_eval < -1) throw "Inner value of arcsin cannot be greater than 1 or smaller than -1";
+		evaluations_cache[this] = asin(evaluations_cache[inner]);
+	}
+	return evaluations_cache[this];
+}
+double ArcSine::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
+	if (var_of_deriving == this) return 1;
+	else if (var_of_deriving == this->inner) {
+		double inner_eval = inner->evaluate(evaluations_cache);
+		if (inner_eval >= 1 || inner_eval <= -1) throw "Inner value of arcsin derivative cannot be greater or equal to 1 or smaller or equal to -1";
+		return 1 / sqrt(1 - inner_eval * inner_eval);
+	}
+	return 0;
+}
+
+double ArcCosine::derive(Variable* var_of_deriving) { // (arccos(f(x)))' = -f'(x) / sqrt(1 - f^2(x))
+	double inner_eval = inner->evaluate();
+	if (inner_eval >= 1 || inner_eval <= -1) throw "Inner value of arcsin derivative cannot be greater or equal to 1 or smaller or equal to -1";
+	double inner_derivative = inner->derive(var_of_deriving);
+	return inner_derivative / sqrt(1 - inner_eval * inner_eval);
+}
+double ArcCosine::evaluate(map<Expression*, double>&evaluations_cache) {
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		double inner_eval = inner->evaluate(evaluations_cache);
+		if (inner_eval > 1 || inner_eval < -1) throw "Inner value of arccos cannot be greater than 1 or smaller than -1";
+		evaluations_cache[this] = acos(evaluations_cache[inner]);
+	}
+	return evaluations_cache[this];
+}
+double ArcCosine::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
+	if (var_of_deriving == this) return 1;
+	else if (var_of_deriving == this->inner) {
+		double inner_eval = inner->evaluate(evaluations_cache);
+		if (inner_eval >= 1 || inner_eval <= -1) throw "Inner value of arccos derivative cannot be greater or equal to 1 or smaller or equal to -1";
+		return -1 / sqrt(1 - inner_eval * inner_eval);
+	}
+	return 0;
+}
+
+double ArcTangent::derive(Variable* var_of_deriving) { // (arctan(f(x)))' = f'(x) / (1 + f^2(x))
+	double inner_eval = inner->evaluate();
+	double inner_derivative = inner->derive(var_of_deriving);
+	return inner_derivative / (1 + inner_eval * inner_eval);
+}
+double ArcTangent::evaluate(map<Expression*, double>& evaluations_cache) {
+	map<Expression*, double>::iterator end = evaluations_cache.end();
+	if (evaluations_cache.find(this) == end) {
+		double inner_eval = inner->evaluate(evaluations_cache);
+		evaluations_cache[this] = atan(evaluations_cache[inner]);
+	}
+	return evaluations_cache[this];
+}
+double ArcTangent::surface_level_derive(Expression* var_of_deriving, map<Expression*, double>& evaluations_cache) {
+	if (var_of_deriving == this) return 1;
+	else if (var_of_deriving == this->inner) {
+		double inner_eval = inner->evaluate(evaluations_cache);
+		return 1 / (1 + inner_eval * inner_eval);
 	}
 	return 0;
 }
